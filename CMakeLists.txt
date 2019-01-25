@@ -46,6 +46,7 @@ list(APPEND RANGES_GPU_CUDA_FLAGS -Xcompiler ${RANGES_GPU_CUDA_CXX_FLAGS})
 add_library(ranges-gpu INTERFACE)
 target_include_directories(ranges-gpu INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>)
 target_compile_features(ranges-gpu INTERFACE cxx_std_14)
+target_compile_options(ranges-gpu INTERFACE --expt-extended-lambda)
 
 if(BUILD_TESTING)
   add_subdirectory(tests)
