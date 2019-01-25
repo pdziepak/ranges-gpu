@@ -27,3 +27,5 @@ function(ranges_gpu_add_test TESTNAME SOURCE)
   target_compile_options(${TESTNAME} PRIVATE ${RANGES_GPU_CUDA_FLAGS})
   add_test(${TESTNAME} ${TESTNAME})
 endfunction(ranges_gpu_add_test)
+
+ranges_gpu_add_test(array array.cu)
