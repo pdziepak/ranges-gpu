@@ -30,3 +30,5 @@ endfunction(ranges_gpu_add_test)
 
 ranges_gpu_add_test(array array.cu)
 ranges_gpu_add_test(span span.cu)
+
+ranges_gpu_add_test(action_to_cpu action/to_cpu.cu)
