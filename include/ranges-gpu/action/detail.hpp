@@ -39,6 +39,10 @@ template<typename V, typename Fn> decltype(auto) with_prepared(needs_preparing_t
   return std::forward<Fn>(fn)(std::move(std::get<1>(ret)));
 }
 
+inline constexpr size_t next_pow2(size_t x) noexcept {
+  return 1 << (64 - __builtin_clzll(x - 1));
+}
+
 } // namespace detail
 } // namespace action
 } // namespace ranges_gpu
