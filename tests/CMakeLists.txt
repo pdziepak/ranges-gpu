@@ -34,5 +34,6 @@ ranges_gpu_add_test(span span.cu)
 ranges_gpu_add_test(action_to_cpu action/to_cpu.cu)
 
 ranges_gpu_add_test(view_iota view/iota.cu)
+ranges_gpu_add_test(view_take view/take.cu)
 ranges_gpu_add_test(view_to_gpu view/to_gpu.cu)
 ranges_gpu_add_test(view_transform view/transform.cu)
