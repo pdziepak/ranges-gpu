@@ -36,6 +36,7 @@ ranges_gpu_add_test(action_any_of action/any_of.cu)
 ranges_gpu_add_test(action_none_of action/none_of.cu)
 ranges_gpu_add_test(action_reduce action/reduce.cu)
 ranges_gpu_add_test(action_to_cpu action/to_cpu.cu)
+ranges_gpu_add_test(action_to_gpu action/to_gpu.cu)
 
 ranges_gpu_add_test(view_iota view/iota.cu)
 ranges_gpu_add_test(view_take view/take.cu)

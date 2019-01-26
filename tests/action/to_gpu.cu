@@ -20,29 +20,17 @@
  * SOFTWARE.
  */
 
-#pragma once
-
-#include <cassert>
-
-#include <vector>
-
 #include "ranges-gpu/action/to_gpu.hpp"
 
-namespace ranges_gpu {
-namespace action {
+#include <gtest/gtest.h>
 
-struct to_cpu {};
+#include "ranges-gpu/view/iota.hpp"
 
-template<typename V> auto to_cpu_fn(V&& v) -> std::vector<typename std::decay_t<V>::value_type> {
-  auto gpu = to_gpu_fn(std::forward<V>(v));
-  auto cpu = std::vector<typename std::decay_t<V>::value_type>(gpu.size());
-  copy(gpu, cpu);
-  return cpu;
+TEST(to_gpu, trivial) {
+  auto in = std::array<int, 4>{1, 2, 3, 4};
+  auto gpu = ranges_gpu::view::iota(1, 5) | ranges_gpu::action::to_gpu();
+  EXPECT_EQ(gpu.size(), in.size());
+  auto out = std::vector<int>(gpu.size());
+  copy(gpu, out);
+  EXPECT_TRUE(std::equal(out.begin(), out.end(), in.begin(), in.end()));
 }
-
-template<typename V> auto operator|(V&& v, to_cpu) {
-  return to_cpu_fn(std::forward<V>(v));
-}
-
-} // namespace action
-} // namespace ranges_gpu
