@@ -22,49 +22,43 @@
 
 #pragma once
 
+#include <tuple>
+
 #include "core.hpp"
 #include "detail.hpp"
+
+#include "ranges-gpu/array.hpp"
 
 namespace ranges_gpu {
 namespace view {
 
-template<typename V, typename F> struct transform_view : base {
-  V in_;
-  F fn_;
-
-public:
-  using value_type = std::result_of_t<F(typename V::value_type)>;
-
-  transform_view(V v, F fn) noexcept : in_(std::move(v)), fn_(std::move(fn)) {}
-
-  static constexpr bool needs_preparing() noexcept { return V::needs_preparing(); }
-  template<typename U = V, typename = std::enable_if_t<U::needs_preparing()>> auto prepare() {
-    auto ret = in_.prepare();
-    using new_view_type = std::decay_t<decltype(std::get<1>(ret))>;
-    return std::make_tuple(std::get<0>(ret), transform_view<new_view_type, F>(std::get<1>(ret), fn_));
-  }
-
-  __device__ constexpr value_type operator[](size_t idx) const noexcept {
-    assert(idx < size());
-    return fn_(in_[idx]);
-  }
-
-  __host__ __device__ constexpr size_t size() const noexcept { return in_.size(); }
-};
-
 namespace detail {
 
-template<typename F> struct transform { F fn_; };
+template<typename R> struct cpu_view : base {
+  R const* in_;
 
-template<typename V, typename F> auto operator|(V&& v, detail::transform<F> t) {
-  using view_type = decltype(detail::to_view(v));
-  return transform_view<view_type, F>(detail::to_view(std::forward<V>(v)), std::move(t.fn_));
-}
+public:
+  using value_type = typename R::value_type;
 
-}; // namespace detail
+  cpu_view(R const& r) noexcept : in_(&r) {}
 
-template<typename F> auto transform(F&& fn) noexcept {
-  return detail::transform<std::decay_t<F>>{std::forward<F>(fn)};
+  static constexpr bool needs_preparing() noexcept { return true; }
+  auto prepare() {
+    auto gpu = array<value_type>(size());
+    copy(*in_, gpu);
+    auto v = to_view(gpu);
+    return std::make_tuple(std::move(gpu), std::move(v));
+  }
+
+  constexpr size_t size() const noexcept { return in_->size(); }
+};
+
+} // namespace detail
+
+struct to_gpu {};
+
+template<typename R> auto operator|(R const& r, to_gpu) {
+  return detail::cpu_view<R>(r);
 }
 
 } // namespace view

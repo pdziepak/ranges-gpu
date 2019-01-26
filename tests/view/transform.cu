@@ -26,6 +26,7 @@
 
 #include "ranges-gpu/action/to_cpu.hpp"
 #include "ranges-gpu/array.hpp"
+#include "ranges-gpu/view/to_gpu.hpp"
 
 void simple_test() {
   auto in = std::array<int, 4>{1, 2, 3, 4};
@@ -55,4 +56,18 @@ void with_capture_test(int y) {
 
 TEST(transform, with_capture) {
   with_capture_test(4);
+}
+
+void cpu_gpu_cpu_test() {
+  auto in = std::array<int, 4>{1, 2, 3, 4};
+  auto out = in | ranges_gpu::view::to_gpu() | ranges_gpu::view::transform([] __device__(int x) { return x * 2; }) |
+             ranges_gpu::action::to_cpu();
+  EXPECT_EQ(out.size(), in.size());
+  auto expected = std::array<int, 4>{};
+  std::transform(in.begin(), in.end(), expected.begin(), [](int x) { return x * 2; });
+  EXPECT_TRUE(std::equal(out.begin(), out.end(), expected.begin(), expected.end()));
+}
+
+TEST(transform, cpu_gpu_cpu) {
+  cpu_gpu_cpu_test();
 }

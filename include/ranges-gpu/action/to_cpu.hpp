@@ -29,14 +29,31 @@
 #include "ranges-gpu/array.hpp"
 #include "ranges-gpu/view/detail.hpp"
 
+#include "detail.hpp"
+
 namespace ranges_gpu {
 namespace action {
 
 namespace detail {
 
-template<typename V> __global__ auto materialize(V in, typename V::value_type* out) -> void {
+template<typename V> __global__ auto materialize(size_t total_size, V in, typename V::value_type* out) -> void {
   auto id = blockIdx.x * blockDim.x + threadIdx.x;
-  out[id] = in[id];
+  if (id < total_size) { out[id] = in[id]; }
+}
+
+template<typename V> auto to_cpu_fn_impl(V in) -> std::vector<typename V::value_type> {
+  using value_type = typename V::value_type;
+  static constexpr size_t max_block_size = 1024;
+
+  size_t total_size = in.size();
+  size_t block_size = std::min(max_block_size, total_size);
+  size_t grid_size = total_size < max_block_size ? 1 : (total_size + max_block_size - 1) / max_block_size;
+
+  auto out = array<value_type>(total_size);
+  detail::materialize<<<grid_size, block_size>>>(total_size, std::move(in), out.data());
+  auto vec = std::vector<value_type>(total_size);
+  copy(out, vec);
+  return vec;
 }
 
 } // namespace detail
@@ -44,13 +61,9 @@ template<typename V> __global__ auto materialize(V in, typename V::value_type* o
 struct to_cpu {};
 
 template<typename V> auto to_cpu_fn(V&& v) -> std::vector<typename std::decay_t<V>::value_type> {
-  using value_type = typename std::decay_t<V>::value_type;
   auto in = view::detail::to_view(std::forward<V>(v));
-  auto out = array<value_type>(in.size());
-  detail::materialize<<<in.size(), 1>>>(std::move(in), out.data());
-  auto vec = std::vector<value_type>(v.size());
-  copy(out, vec);
-  return vec;
+  return detail::with_prepared(detail::needs_preparing_tag<in.needs_preparing()>{}, std::move(in),
+                               [](auto vin) { return detail::to_cpu_fn_impl(std::move(vin)); });
 }
 
 template<typename V> auto operator|(V&& v, to_cpu) {
