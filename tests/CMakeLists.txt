@@ -33,6 +33,7 @@ ranges_gpu_add_test(span span.cu)
 
 ranges_gpu_add_test(action_all_of action/all_of.cu)
 ranges_gpu_add_test(action_any_of action/any_of.cu)
+ranges_gpu_add_test(action_none_of action/none_of.cu)
 ranges_gpu_add_test(action_reduce action/reduce.cu)
 ranges_gpu_add_test(action_to_cpu action/to_cpu.cu)
 
