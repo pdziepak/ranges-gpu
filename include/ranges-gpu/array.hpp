@@ -25,9 +25,11 @@
 #include <cassert>
 
 #include <array>
-#include <vector>
 #include <memory>
 #include <type_traits>
+#include <vector>
+
+#include "detail.hpp"
 
 namespace ranges_gpu {
 
@@ -75,6 +77,8 @@ public:
 
   T* data() const noexcept { return data_.get(); }
   size_t size() const noexcept { return size_; }
+
+  T* release() && noexcept { return data_.release(); }
 };
 
 template<typename SourceValueType, typename Destination>

@@ -22,47 +22,21 @@
 
 #pragma once
 
-#include <tuple>
+#include <cassert>
 
-#include "core.hpp"
-#include "detail.hpp"
-
-#include "ranges-gpu/array.hpp"
-#include "ranges-gpu/detail.hpp"
+#include <memory>
 
 namespace ranges_gpu {
-namespace view {
-
 namespace detail {
 
-template<typename R> struct cpu_view : base {
-  R const* in_;
-
-public:
-  using value_type = typename R::value_type;
-
-  cpu_view(R const& r) noexcept : in_(&r) {}
-
-  static constexpr bool needs_preparing() noexcept { return true; }
-  auto prepare() && {
-    auto gpu = array<value_type>(size());
-    copy(*in_, gpu);
-    auto v = to_view(gpu);
-    auto bufs = std::vector<ranges_gpu::detail::untyped_buffer>();
-    bufs.emplace_back(reinterpret_cast<char*>(std::move(gpu).release()));
-    return std::make_tuple(std::move(bufs), std::move(v));
+struct buffer_deleter {
+  void operator()(char* ptr) const noexcept {
+    [[maybe_unused]] auto ret = cudaFree(ptr);
+    assert(ret == cudaSuccess);
   }
-
-  constexpr size_t size() const noexcept { return in_->size(); }
 };
 
+using untyped_buffer = std::unique_ptr<char[], buffer_deleter>;
+
 } // namespace detail
-
-struct to_gpu {};
-
-template<typename R> auto operator|(R const& r, to_gpu) {
-  return detail::cpu_view<R>(r);
-}
-
-} // namespace view
 } // namespace ranges_gpu

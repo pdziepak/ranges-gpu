@@ -38,10 +38,10 @@ public:
   transform_view(V v, F fn) noexcept : in_(std::move(v)), fn_(std::move(fn)) {}
 
   static constexpr bool needs_preparing() noexcept { return V::needs_preparing(); }
-  template<typename U = V, typename = std::enable_if_t<U::needs_preparing()>> auto prepare() {
-    auto ret = in_.prepare();
+  template<typename U = V, typename = std::enable_if_t<U::needs_preparing()>> auto prepare() && {
+    auto ret = std::move(in_).prepare();
     using new_view_type = std::decay_t<decltype(std::get<1>(ret))>;
-    return std::make_tuple(std::get<0>(ret), transform_view<new_view_type, F>(std::get<1>(ret), fn_));
+    return std::make_tuple(std::move(std::get<0>(ret)), transform_view<new_view_type, F>(std::get<1>(ret), fn_));
   }
 
   __device__ constexpr value_type operator[](size_t idx) const noexcept {
