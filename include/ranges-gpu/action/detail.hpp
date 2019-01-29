@@ -28,6 +28,8 @@ namespace ranges_gpu {
 namespace action {
 namespace detail {
 
+template<bool KnownSize> struct known_size_tag {};
+
 template<bool NeedsPreparing> struct needs_preparing_tag {};
 
 template<typename V, typename Fn> decltype(auto) with_prepared(needs_preparing_tag<false>, V&& v, Fn&& fn) {

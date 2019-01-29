@@ -53,6 +53,7 @@ public:
     return std::make_tuple(std::move(bufs), std::move(v));
   }
 
+  static constexpr bool known_size() noexcept { return true; }
   constexpr size_t size() const noexcept { return in_->size(); }
 };
 

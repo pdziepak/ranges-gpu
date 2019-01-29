@@ -49,6 +49,8 @@ template<typename V1, typename V2> struct zip_view : base {
   V2 v2_;
 
 public:
+  static_assert(V1::known_size() && V2::known_size(), "");
+
   using value_type = pair<typename V1::value_type, typename V2::value_type>;
 
   zip_view(V1 v1, V2 v2) noexcept : v1_(std::move(v1)), v2_(std::move(v2)) {}
@@ -88,6 +90,8 @@ public:
     return make_pair(v1_[idx], v2_[idx]);
   }
 
+  static constexpr bool known_size() noexcept { return true; }
+  __host__ __device__ constexpr size_t size_bound() const noexcept { return size(); }
   __host__ __device__ constexpr size_t size() const noexcept {
     assert(v1_.size() == v2_.size());
     return v1_.size();

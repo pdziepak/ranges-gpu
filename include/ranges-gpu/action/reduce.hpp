@@ -65,7 +65,7 @@ __global__ auto do_reduce_blocks(size_t total_size, size_t step, F fn, T* out) -
   }
 }
 
-template<typename V, typename T, typename F> auto reduce_fn_impl(V v, T t, F fn) -> T {
+template<typename V, typename T, typename F> auto reduce_fn_impl(known_size_tag<true>, V v, T t, F fn) -> T {
   static constexpr size_t max_block_size = 1024;
 
   if (v.size() == 0) { return t; }
@@ -94,12 +94,105 @@ template<typename V, typename T, typename F> auto reduce_fn_impl(V v, T t, F fn)
   return std::move(result[0]);
 }
 
+template<typename V, typename T, typename F>
+__global__ auto do_filtered_reduce(size_t total_size, V in, T init, F fn, T* out, uint8_t* presence) -> void {
+  auto id = blockIdx.x * blockDim.x + threadIdx.x;
+  if (id < total_size) {
+    in.get(id,
+           [&](auto&& v) {
+             out[id] = std::move(v);
+             presence[id] = 1;
+           },
+           [&] { presence[id] = 0; });
+  }
+
+  auto tid = threadIdx.x;
+  auto stride = blockDim.x / 2;
+  while (stride) {
+    __syncthreads();
+    if (tid < stride && id + stride < total_size) {
+      auto p1 = presence[id];
+      auto p2 = presence[id + stride];
+      if (p1 && p2) {
+        out[id] = fn(out[id], out[id + stride]);
+      } else if (p2) {
+        out[id] = out[id + stride];
+        presence[id] = 1;
+      }
+    }
+    stride /= 2;
+  }
+  if (id == 0) {
+    if (presence[0]) {
+      out[0] = fn(out[0], init);
+    } else {
+      out[0] = init;
+      presence[0] = 1;
+    }
+  }
+}
+
+template<typename T, typename F>
+__global__ auto do_filtered_reduce_block(size_t total_size, size_t step, F fn, T* out, uint8_t* presence) -> void {
+  auto id = blockIdx.x * blockDim.x + threadIdx.x;
+  auto tid = threadIdx.x;
+  auto stride = blockDim.x / 2;
+  while (stride) {
+    __syncthreads();
+    if (tid < stride && (id + stride) * step < total_size) {
+      auto idx1 = id * step;
+      auto idx2 = (id + stride) * step;
+      auto p1 = presence[idx1];
+      auto p2 = presence[idx2];
+      if (p1 && p2) {
+        out[idx1] = fn(out[idx1], out[idx2]);
+      } else if (p2) {
+        out[idx1] = out[idx2];
+        presence[idx1] = 1;
+      }
+    }
+    stride /= 2;
+  }
+}
+
+template<typename V, typename T, typename F> auto reduce_fn_impl(known_size_tag<false>, V v, T t, F fn) -> T {
+  static constexpr size_t max_block_size = 1024;
+
+  if (v.size_bound() == 0) { return t; }
+
+  size_t total_size = v.size_bound();
+  size_t block_size = std::min(max_block_size, next_pow2(total_size));
+  size_t grid_size = total_size < max_block_size ? 1 : (total_size + max_block_size - 1) / max_block_size;
+
+  auto presence = array<uint8_t>(total_size);
+  auto out = array<T>(total_size);
+  detail::do_filtered_reduce<<<grid_size, block_size>>>(total_size, std::move(v), std::move(t), fn, out.data(),
+                                                        presence.data());
+
+  size_t step = block_size;
+  while (grid_size != 1) {
+    auto step_total_size = grid_size;
+
+    block_size = std::min(max_block_size, next_pow2(step_total_size));
+    grid_size = step_total_size < max_block_size ? 1 : (step_total_size + max_block_size - 1) / max_block_size;
+
+    detail::do_filtered_reduce_block<<<grid_size, block_size>>>(total_size, step, fn, out.data(), presence.data());
+    step *= block_size;
+  }
+
+  // FIXME: shouldn't need this array
+  auto result = std::array<T, 1>{};
+  copy(span<T>(out.data(), out.data() + 1), result);
+  return std::move(result[0]);
+}
+
 } // namespace detail
 
 template<typename V, typename T, typename F> auto reduce_fn(V&& v, T t, F fn) -> T {
   auto in = view::detail::to_view(std::forward<V>(v));
   return detail::with_prepared(detail::needs_preparing_tag<in.needs_preparing()>{}, std::move(in), [&](auto vin) {
-    return detail::reduce_fn_impl(std::move(vin), std::move(t), std::move(fn));
+    return detail::reduce_fn_impl(detail::known_size_tag<vin.known_size()>{}, std::move(vin), std::move(t),
+                                  std::move(fn));
   });
 }
 

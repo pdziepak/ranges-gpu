@@ -44,12 +44,23 @@ public:
     return std::make_tuple(std::move(std::get<0>(ret)), transform_view<new_view_type, F>(std::get<1>(ret), fn_));
   }
 
+  template<typename U = V, typename = std::enable_if_t<U::known_size()>>
   __device__ constexpr value_type operator[](size_t idx) const noexcept {
     assert(idx < size());
     return fn_(in_[idx]);
   }
 
-  __host__ __device__ constexpr size_t size() const noexcept { return in_.size(); }
+  template<typename PresentFn, typename AbsentFn> __device__ void get(size_t idx, PresentFn&& pfn, AbsentFn&& afn) {
+    assert(idx < size_bound());
+    in_.get(idx, [&](auto&& v) { pfn(fn_(v)); }, std::forward<AbsentFn>(afn));
+  }
+
+  static constexpr bool known_size() noexcept { return V::known_size(); }
+  __host__ __device__ constexpr size_t size_bound() const noexcept { return in_.size_bound(); }
+  template<typename U = V, typename = std::enable_if_t<U::known_size()>>
+  __host__ __device__ constexpr size_t size() const noexcept {
+    return size_bound();
+  }
 };
 
 namespace detail {

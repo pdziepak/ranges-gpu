@@ -54,6 +54,8 @@ public:
     return begin_[idx];
   }
 
+  static constexpr bool known_size() noexcept { return true; }
+  __host__ __device__ constexpr size_t size_bound() const noexcept { return size(); }
   __host__ __device__ constexpr size_t size() const noexcept { return end_ - begin_; }
 };
 

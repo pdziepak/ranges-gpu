@@ -28,54 +28,62 @@
 namespace ranges_gpu {
 namespace view {
 
-template<typename V> struct take_view : base {
+template<typename V, typename F> struct filter_view : base {
   V in_;
-  size_t max_size_;
+  F fn_;
 
 public:
-  static_assert(V::known_size(), "");
-
   using value_type = typename V::value_type;
 
-  take_view(V v, size_t n) noexcept : in_(std::move(v)), max_size_(n) {}
+  filter_view(V v, F fn) noexcept : in_(std::move(v)), fn_(std::move(fn)) {}
 
   static constexpr bool needs_preparing() noexcept { return V::needs_preparing(); }
-  template<typename U = V, typename = std::enable_if_t<U::needs_preparing()>> auto prepare() {
-    auto ret = in_.prepare();
+  template<typename U = V, typename = std::enable_if_t<U::needs_preparing()>> auto prepare() && {
+    auto ret = std::move(in_).prepare();
     using new_view_type = std::decay_t<decltype(std::get<1>(ret))>;
-    return std::make_tuple(std::get<0>(ret), take_view<new_view_type>(std::get<1>(ret), max_size_));
+    return std::make_tuple(std::move(std::get<0>(ret)), filter_view<new_view_type, F>(std::get<1>(ret), fn_));
   }
 
-  __device__ constexpr value_type operator[](size_t idx) const noexcept {
-    assert(idx < size());
-    return in_[idx];
-  }
+  static constexpr bool known_size() noexcept { return false; }
+  __host__ __device__ constexpr size_t size_bound() const noexcept { return in_.size_bound(); }
 
-  static constexpr bool known_size() noexcept { return true; }
-  __host__ __device__ constexpr size_t size_bound() const noexcept {
-    return max_size_ < in_.size() ? max_size_ : in_.size();
+  template<typename PresentFn, typename AbsentFn, typename U = V, typename = std::enable_if_t<U::known_size()>>
+  __device__ void get(size_t idx, PresentFn&& pfn, AbsentFn&& afn) {
+    auto v = in_[idx];
+    if (fn_(v)) {
+      pfn(v);
+    } else {
+      afn();
+    }
   }
-
-  __host__ __device__ constexpr size_t size() const noexcept {
-    return size_bound();
+  template<typename PresentFn, typename AbsentFn, typename U = V, typename = std::enable_if_t<!U::known_size()>,
+           typename = void>
+  __device__ void get(size_t idx, PresentFn&& pfn, AbsentFn&& afn) {
+    in_.get(idx,
+            [&](auto&& v) {
+              if (fn_(v)) {
+                pfn(v);
+              } else {
+                afn();
+              }
+            },
+            [&] { afn(); });
   }
 };
 
 namespace detail {
 
-struct take {
-  size_t n_;
-};
+template<typename F> struct filter { F fn_; };
 
-template<typename V> auto operator|(V&& v, detail::take t) {
+template<typename V, typename F> auto operator|(V&& v, detail::filter<F> t) {
   using view_type = decltype(detail::to_view(v));
-  return take_view<view_type>(detail::to_view(std::forward<V>(v)), std::move(t.n_));
+  return filter_view<view_type, F>(detail::to_view(std::forward<V>(v)), std::move(t.fn_));
 }
 
 }; // namespace detail
 
-inline auto take(size_t n) noexcept {
-  return detail::take{n};
+template<typename F> auto filter(F&& fn) noexcept {
+  return detail::filter<std::decay_t<F>>{std::forward<F>(fn)};
 }
 
 } // namespace view
