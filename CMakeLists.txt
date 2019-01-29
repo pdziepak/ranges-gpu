@@ -27,6 +27,8 @@ project(ranges-gpu
 
 include(CTest)
 
+option(BUILD_PERF "Build performance tests." ON)
+
 list(APPEND RANGES_GPU_CXX_FLAGS -Wall -Wextra -Werror)
 list(APPEND RANGES_GPU_CXX_DEBUG_FLAGS -fsanitize=address -fsanitize=address)
 list(APPEND RANGES_GPU_CUDA_DEBUG_FLAGS -G)
@@ -47,6 +49,10 @@ add_library(ranges-gpu INTERFACE)
 target_include_directories(ranges-gpu INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>)
 target_compile_features(ranges-gpu INTERFACE cxx_std_14)
 target_compile_options(ranges-gpu INTERFACE --expt-extended-lambda)
+
+if(BUILD_TESTING AND BUILD_PERF)
+  add_subdirectory(perf)
+endif()
 
 if(BUILD_TESTING)
   add_subdirectory(tests)
