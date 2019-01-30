@@ -27,3 +27,5 @@ function(ranges_gpu_add_perf TESTNAME SOURCE)
   target_compile_options(perf_${TESTNAME} PRIVATE ${RANGES_GPU_CUDA_FLAGS})
   add_test(NAME perf_${TESTNAME} COMMAND perf_${TESTNAME} CONFIGURATIONS perf)
 endfunction(ranges_gpu_add_perf)
+
+ranges_gpu_add_perf(reduce reduce.cu)
