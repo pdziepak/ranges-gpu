@@ -29,6 +29,7 @@ function(ranges_gpu_add_test TESTNAME SOURCE)
 endfunction(ranges_gpu_add_test)
 
 ranges_gpu_add_test(array array.cu)
+ranges_gpu_add_test(examples examples.cu)
 ranges_gpu_add_test(span span.cu)
 
 ranges_gpu_add_test(action_all_of action/all_of.cu)
