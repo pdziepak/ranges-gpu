@@ -27,8 +27,9 @@
 
 static void print_gpu_info() {
   int dev;
-  [[maybe_unused]] auto ret = cudaGetDevice(&dev);
+  auto ret = cudaGetDevice(&dev);
   assert(ret == cudaSuccess);
+  (void)ret;
   cudaDeviceProp prop;
   ret = cudaGetDeviceProperties(&prop, dev);
   assert(ret == cudaSuccess);
@@ -49,11 +50,12 @@ template<typename F> void measure_gpu_time(benchmark::State& state, F&& fn) {
   print_gpu_info_once();
 
   cudaEvent_t start;
-  [[maybe_unused]] auto ret = cudaEventCreate(&start);
+  auto ret = cudaEventCreate(&start);
   assert(ret == cudaSuccess);
   cudaEvent_t stop;
   ret = cudaEventCreate(&stop);
   assert(ret == cudaSuccess);
+  (void)ret;
 
   for (auto _ : state) {
     cudaEventRecord(start);

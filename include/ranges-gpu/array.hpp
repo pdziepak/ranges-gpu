@@ -36,8 +36,9 @@ namespace ranges_gpu {
 template<typename T> class array {
   struct deleter {
     void operator()(T* ptr) const noexcept {
-      [[maybe_unused]] auto ret = cudaFree(ptr);
+      auto ret = cudaFree(ptr);
       assert(ret == cudaSuccess);
+      (void)ret;
     }
   };
 
@@ -61,8 +62,9 @@ public:
   }
 
   explicit array(T const* ptr, size_t n) : array(n) {
-    [[maybe_unused]] auto ret = cudaMemcpy(data_.get(), ptr, size() * sizeof(T), cudaMemcpyHostToDevice);
+    auto ret = cudaMemcpy(data_.get(), ptr, size() * sizeof(T), cudaMemcpyHostToDevice);
     assert(ret == cudaSuccess);
+    (void)ret;
   }
 
   explicit array(std::vector<T> const& vec) : array(vec.data(), vec.size()) {}
@@ -70,8 +72,8 @@ public:
 
   array(array&&) noexcept = default;
   array(array const& other) : array(other.size()) {
-    [[maybe_unused]] auto ret =
-        cudaMemcpy(data_.get(), other.data_.get(), size() * sizeof(T), cudaMemcpyDeviceToDevice);
+    auto ret = cudaMemcpy(data_.get(), other.data_.get(), size() * sizeof(T), cudaMemcpyDeviceToDevice);
+    (void)ret;
     assert(ret == cudaSuccess);
   }
 

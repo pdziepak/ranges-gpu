@@ -31,8 +31,9 @@ namespace detail {
 
 struct buffer_deleter {
   void operator()(char* ptr) const noexcept {
-    [[maybe_unused]] auto ret = cudaFree(ptr);
+    auto ret = cudaFree(ptr);
     assert(ret == cudaSuccess);
+    (void)ret;
   }
 };
 
