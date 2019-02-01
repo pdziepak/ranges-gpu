@@ -28,9 +28,12 @@ project(ranges-gpu
 include(CTest)
 
 option(BUILD_PERF "Build performance tests." ON)
+option(RANGES_GPU_SANTIZIERS "Build with AddressSanitizer and UndefinedBehaviorSanitizer." ON)
 
 list(APPEND RANGES_GPU_CXX_FLAGS -Wall -Wextra -Werror)
-list(APPEND RANGES_GPU_CXX_DEBUG_FLAGS -fsanitize=address -fsanitize=address)
+if (RANGES_GPU_SANTIZIERS)
+  list(APPEND RANGES_GPU_CXX_DEBUG_FLAGS -fsanitize=address -fsanitize=address)
+endif()
 list(APPEND RANGES_GPU_CUDA_DEBUG_FLAGS -G)
 list(APPEND RANGES_GPU_CUDA_RELEASE_FLAGS -lineinfo)
 
