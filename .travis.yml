@@ -1,0 +1,41 @@
+language: cpp
+dist: xenial
+
+matrix:
+  include:
+    - os: linux
+      compiler: gcc
+      addons: &gcc7
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-7
+      env:
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE=Release
+
+    - os: linux
+      compiler: gcc
+      addons: *gcc7
+      env:
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE=Debug
+
+install:
+  - eval "${MATRIX_EVAL}"
+  - CUDA_REPO_PKG=cuda-repo-ubuntu1604_10.0.130-1_amd64.deb
+  - wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/$CUDA_REPO_PKG
+  - sudo dpkg -i $CUDA_REPO_PKG
+  - sudo apt-get -y update
+  - sudo apt-get install -qq --allow-unauthenticated cuda-core-10-0 cuda-cudart-dev-10-0
+  - export PATH=/usr/local/cuda-10.0/bin:$PATH
+  - export CUDACXX=nvcc
+  - mkdir build
+  - cd build
+  - (curl https://codeload.github.com/google/googletest/tar.gz/release-1.8.1 | tar -xzf - && cd googletest-release-1.8.1 && mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && make && sudo make install);
+  - (curl https://codeload.github.com/google/benchmark/tar.gz/v1.4.1 | tar -xzf - && cd benchmark-1.4.1/ && mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE_TESTING=OFF && make && sudo make install)
+
+script:
+  - cmake .. -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DRANGES_GPU_SANTIZIERS=OFF
+  - make VERBOSE=1
