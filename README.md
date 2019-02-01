@@ -1,5 +1,7 @@
 # Ranges GPU
 
+[![Build Status](https://travis-ci.com/pdziepak/ranges-gpu.svg?branch=master)](https://travis-ci.com/pdziepak/ranges-gpu)
+
 Experimental ranges library for CUDA. Heavily inspired by the C++ ranges.
 
 ## About
